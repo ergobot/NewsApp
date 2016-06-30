@@ -1,6 +1,5 @@
 package com.example.android.newsapp;
 
-import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Context;
 import android.content.Intent;
@@ -17,7 +16,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -62,6 +60,8 @@ public class MainActivity extends ListActivity {
 
         });
 
+        queryArticles(null);
+
     }
 
     public void queryArticles(View view){
@@ -80,9 +80,11 @@ public class MainActivity extends ListActivity {
             this.items = items;
         }
 
+
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             View view = convertView;
+            ArticleHolder holder = new ArticleHolder();
             if (view == null) {
                 LayoutInflater inflater = (LayoutInflater)getSystemService(Context.LAYOUT_INFLATER_SERVICE);
                 view = inflater.inflate(R.layout.row, null);
@@ -90,14 +92,24 @@ public class MainActivity extends ListActivity {
             Article article = items.get(position);
             if (article != null) {
                 TextView title = (TextView) view.findViewById(R.id.title);
-                TextView author = (TextView) view.findViewById(R.id.author);
+                ImageView tile = (ImageView) view.findViewById(R.id.storyimage);
+                holder.articleTitleView = title;
+                holder.img = tile;
+                view.setTag(holder);
+
+                Article a = articles.get(position);
+                holder.articleTitleView.setText(a.getTitle());
+
                 if (title != null) {
-                    title.setText(article.getTitle());                            }
-                if(author != null){
-                    author.setText(article.getAuthor());
+                    title.setText(article.getTitle());
                 }
 
-                new DownloadImageTask((ImageView) findViewById(R.id.storyimage)).execute(article.getImageUrl());
+                if(article.getImageUrl() != null && !article.getImageUrl().isEmpty()) {
+
+                    if(tile != null) {
+                        new DownloadImageTask(holder).execute(article.getImageUrl());
+                    }
+                }
 
             }
             return view;
@@ -108,8 +120,8 @@ public class MainActivity extends ListActivity {
     private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
         ImageView bmImage;
 
-        public DownloadImageTask(ImageView bmImage) {
-            this.bmImage = bmImage;
+        public DownloadImageTask(ArticleHolder holder) {
+            this.bmImage = holder.img;
         }
 
         protected Bitmap doInBackground(String... urls) {
@@ -126,10 +138,16 @@ public class MainActivity extends ListActivity {
         }
 
         protected void onPostExecute(Bitmap result) {
-            bmImage.setImageBitmap(result);
+            if(result != null) {
+                bmImage.setImageBitmap(result);
+            }
         }
     }
 
+    private static class ArticleHolder {
+        public TextView articleTitleView;
+        public ImageView img;
+    }
 
     public class ArticleQueryTask extends AsyncTask<String, Void, ArrayList<Article>> {
 
@@ -139,56 +157,46 @@ public class MainActivity extends ListActivity {
                 throws JSONException {
 
             JSONObject bookJson = new JSONObject(bookJsonStr);
-            JSONArray bookArray = bookJson.getJSONArray("items");
+            ArrayList<Article> articlesResults = new ArrayList<Article>();
+            if(bookJson.has("response") && bookJson.getJSONObject("response").has("results")){
+                JSONArray resultsArray = bookJson.getJSONObject("response").getJSONArray("results");
+                    for(int i = 0; i < resultsArray.length(); i++) {
+                        JSONObject element = (JSONObject)resultsArray.get(i);
+                        String title = "Unknown Title";
+                        String contentUrl = "";
+                        String imageUrl = "";
+                        if (element.has("webTitle")) {
+                            title = element.getString("webTitle");
+                        }
+                        if (element.has("webUrl")) {
+                            contentUrl = element.getString("webUrl");
+                        }
+                        if (element.has("fields")) {
+                            imageUrl = element.getJSONObject("fields").getString("thumbnail");
+                        }
 
-            ArrayList<Article> bookResults = new ArrayList<Article>();
-
-            for(int i = 0; i < bookArray.length(); i++) {
-
-                String title;
-                String author;
-
-
-                JSONObject bookResultJson = bookArray.getJSONObject(i);
-
-                if(bookResultJson.getJSONObject("volumeInfo").has("title")){
-                    title = bookResultJson.getJSONObject("volumeInfo").getString("title");
-                }else{
-                    title = "Not available";
-                }
-                if(bookResultJson.getJSONObject("volumeInfo").has("authors")){
-                    JSONArray authors = bookResultJson.getJSONObject("volumeInfo").getJSONArray("authors");
-                    StringBuilder sb = new StringBuilder();
-                    for(int j = 0; j < authors.length(); j++) {
-                        sb.append(authors.getString(j));
-                        sb.append(", ");
+                        Article book = new Article();
+                        book.setTitle(title);
+                        book.setContentUrl(contentUrl);
+                        book.setImageUrl(imageUrl);
+                        articlesResults.add(book);
                     }
-                    if (sb.length() > 0) {
-                        sb.setLength(sb.length() - 2);
-                        author = sb.toString();
-                    }else{
-                        author = "Not available";
-                    }
-                }else{
-                    author = "Not available";
-                }
 
-                Article book = new Article();
-                book.setTitle(title);
-                book.setAuthor(author);
-                bookResults.add(book);
+
             }
 
-            return bookResults;
+
+
+            return articlesResults;
 
         }
         @Override
         protected ArrayList<Article> doInBackground(String... params) {
 
             // If there's no zip code, there's nothing to look up.  Verify size of params.
-            if (params.length == 0) {
-                return null;
-            }
+//            if (params.length == 0) {
+//                return null;
+//            }
 
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
@@ -200,14 +208,9 @@ public class MainActivity extends ListActivity {
 
             try {
                 final String BOOK_QUERY_BASE_URL =
-                        "https://www.googleapis.com/articles/v1/volumes?";
-                final String QUERY_PARAM = "q";
-                final String MAX_PARAM = "maxResults";
+                        "http://content.guardianapis.com/search?show-fields=thumbnail&q=android&api-key=test&page-size=10";
 
-                Uri builtUri = Uri.parse(BOOK_QUERY_BASE_URL).buildUpon()
-                        .appendQueryParameter(QUERY_PARAM, params[0])
-                        .appendQueryParameter(MAX_PARAM, "20")
-                        .build();
+                Uri builtUri = Uri.parse(BOOK_QUERY_BASE_URL).buildUpon().build();
 
                 URL url = new URL(builtUri.toString());
 
