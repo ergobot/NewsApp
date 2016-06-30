@@ -21,7 +21,7 @@
         <Button
             android:id="@+id/querybutton"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:text="@string/button_query"
             android:layout_alignParentRight="true"
             android:onClick="queryArticles"/>

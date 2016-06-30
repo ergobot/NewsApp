@@ -153,13 +153,13 @@ public class MainActivity extends ListActivity {
 
         private final String LOG_TAG = ArticleQueryTask.class.getSimpleName();
 
-        private ArrayList<Article> getBookDataFromJson(String bookJsonStr)
+        private ArrayList<Article> getArticleDataFromJson(String bookJsonStr)
                 throws JSONException {
 
-            JSONObject bookJson = new JSONObject(bookJsonStr);
+            JSONObject articleJson = new JSONObject(bookJsonStr);
             ArrayList<Article> articlesResults = new ArrayList<Article>();
-            if(bookJson.has("response") && bookJson.getJSONObject("response").has("results")){
-                JSONArray resultsArray = bookJson.getJSONObject("response").getJSONArray("results");
+            if(articleJson.has("response") && articleJson.getJSONObject("response").has("results")){
+                JSONArray resultsArray = articleJson.getJSONObject("response").getJSONArray("results");
                     for(int i = 0; i < resultsArray.length(); i++) {
                         JSONObject element = (JSONObject)resultsArray.get(i);
                         String title = "Unknown Title";
@@ -175,17 +175,15 @@ public class MainActivity extends ListActivity {
                             imageUrl = element.getJSONObject("fields").getString("thumbnail");
                         }
 
-                        Article book = new Article();
-                        book.setTitle(title);
-                        book.setContentUrl(contentUrl);
-                        book.setImageUrl(imageUrl);
-                        articlesResults.add(book);
+                        Article article = new Article();
+                        article.setTitle(title);
+                        article.setContentUrl(contentUrl);
+                        article.setImageUrl(imageUrl);
+                        articlesResults.add(article);
                     }
 
 
             }
-
-
 
             return articlesResults;
 
@@ -193,24 +191,19 @@ public class MainActivity extends ListActivity {
         @Override
         protected ArrayList<Article> doInBackground(String... params) {
 
-            // If there's no zip code, there's nothing to look up.  Verify size of params.
-//            if (params.length == 0) {
-//                return null;
-//            }
-
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
 
             // Will contain the raw JSON response as a string.
-            String bookJsonStr = null;
+            String articleJsonStr = null;
 
             try {
-                final String BOOK_QUERY_BASE_URL =
+                final String NEWS_BASE_URL =
                         "http://content.guardianapis.com/search?show-fields=thumbnail&q=android&api-key=test&page-size=10";
 
-                Uri builtUri = Uri.parse(BOOK_QUERY_BASE_URL).buildUpon().build();
+                Uri builtUri = Uri.parse(NEWS_BASE_URL).buildUpon().build();
 
                 URL url = new URL(builtUri.toString());
 
@@ -243,9 +236,9 @@ public class MainActivity extends ListActivity {
                         // Stream was empty.  No point in parsing.
                         return null;
                     }
-                    bookJsonStr = buffer.toString();
+                    articleJsonStr = buffer.toString();
 
-                    Log.v(LOG_TAG, "Book result string: " + bookJsonStr);
+                    Log.v(LOG_TAG, "Book result string: " + articleJsonStr);
                 }else{
                     // Returns null when response code is not good response code
                     return null;
@@ -267,7 +260,7 @@ public class MainActivity extends ListActivity {
             }
 
             try {
-                return getBookDataFromJson(bookJsonStr);
+                return getArticleDataFromJson(articleJsonStr);
             } catch (JSONException e) {
                 Log.e(LOG_TAG, e.getMessage(), e);
                 e.printStackTrace();
@@ -289,9 +282,5 @@ public class MainActivity extends ListActivity {
         }
 
     }
-
-
-
-
 
 }

@@ -3,7 +3,6 @@ package com.example.android.newsapp;
 public class Article {
 
     String title;
-    String author;
     String contentUrl;
     String imageUrl;
 
@@ -13,14 +12,6 @@ public class Article {
 
     public void setTitle(String title) {
         this.title = title;
-    }
-
-    public String getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(String author) {
-        this.author = author;
     }
 
     public String getContentUrl() {
